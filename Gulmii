@@ -1,0 +1,465 @@
+import http.server
+port webbrowser
+import threading
+import time
+
+PORT = 9000
+
+# Complete modern landing page layout with live embedded 3D Three.js engines
+HTML_CONTENT = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gulmi Portal - History, Culture & Live Updates</title>
+    <!-- Include Three.js via CDN for responsive 3D Rendering on Android mobile webview -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: #08090c;
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+
+        /* Top Bar Navigation Structure */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(8, 9, 12, 0.85);
+            backdrop-filter: blur(12px);
+            padding: 18px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        .logo-text {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(45deg, #ffd700, #ff4500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-items a {
+            color: #94a3b8;
+            text-decoration: none;
+            margin-left: 20px;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        .nav-items a:hover {
+            color: #ffd700;
+        }
+
+        /* 3D Interactivity Canvas Section Container */
+        #hero-canvas-section {
+            position: relative;
+            height: 85vh;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #131722 0%, #08090c 100%);
+            padding-top: 60px;
+        }
+
+        #canvas3d-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .hero-overlay {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            pointer-events: none;
+            max-width: 800px;
+            padding: 0 20px;
+        }
+
+        .hero-overlay h1 {
+            font-size: 3.2rem;
+            font-weight: 900;
+            margin-bottom: 15px;
+            text-shadow: 0 4px 12px rgba(0,0,0,0.7);
+        }
+
+        .hero-overlay p {
+            color: #cbd5e1;
+            font-size: 1.2rem;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+        }
+
+        .badge-gold {
+            display: inline-block;
+            background: rgba(255, 215, 0, 0.1);
+            color: #ffd700;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 215, 0, 0.25);
+        }
+
+        /* Content Blocks Frame */
+        section {
+            padding: 90px 8%;
+            position: relative;
+            z-index: 10;
+        }
+
+        .section-header {
+            font-size: 2.2rem;
+            margin-bottom: 40px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .section-header::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 50%;
+            height: 3px;
+            background: #ffd700;
+            border-radius: 2px;
+        }
+
+        /* Information Grid Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .info-card {
+            background: #111319;
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 30px;
+            border-radius: 16px;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .info-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
+        .info-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+            color: #ffd700;
+        }
+
+        .info-card p {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Timeline Box Layout */
+        .history-box {
+            border-left: 2px solid rgba(255, 215, 0, 0.3);
+            padding-left: 25px;
+            margin-left: 10px;
+        }
+
+        .history-event {
+            position: relative;
+            margin-bottom: 35px;
+        }
+
+        .history-event::before {
+            content: '';
+            position: absolute;
+            left: -32px;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            background: #ffd700;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #ffd700;
+        }
+
+        .event-time {
+            font-weight: 700;
+            color: #ff4500;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        /* News Cards Formatting */
+        .news-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .news-strip {
+            background: linear-gradient(90deg, #111319, #161a23);
+            border-left: 4px solid #ff4500;
+            padding: 22px;
+            border-radius: 0 12px 12px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .news-meta {
+            font-size: 0.8rem;
+            color: #ff4500;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .news-strip h4 {
+            font-size: 1.2rem;
+            color: #f8fafc;
+        }
+
+        .news-strip p {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        footer {
+            background: #050608;
+            padding: 40px;
+            text-align: center;
+            color: #475569;
+            font-size: 0.85rem;
+            border-top: 1px solid rgba(255,255,255,0.03);
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .hero-overlay h1 { font-size: 2rem; }
+            .nav-items { display: none; }
+            section { padding: 60px 5%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navigation Bar -->
+    <nav>
+        <div class="logo-text">GULMI CONNECT</div>
+        <div class="nav-items">
+            <a href="#about">Overview</a>
+            <a href="#history">History</a>
+            <a href="#news">Latest News</a>
+        </div>
+    </nav>
+
+    <!-- Interactive 3D Canvas Header Block -->
+    <div id="hero-canvas-section">
+        <div id="canvas3d-container"></div>
+        <div class="hero-overlay">
+            <div class="badge-gold">Live Local Interactive Demo</div>
+            <h1>The Hills of Gulmi</h1>
+            <p>Drag on your mobile screen to interact with the rotating 3D topographic grid structure below.</p>
+        </div>
+    </div>
+
+    <!-- Section 1: Core Geographic Profile -->
+    <section id="about" style="background-color: #0b0c10;">
+        <h2 class="section-header">District Overview</h2>
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>🏞️ Unique Topography</h3>
+                <p>Located within Lumbini Province, Gulmi stretches completely across high hilly variations, ranging dynamically from low river basins to towering high ridges.</p>
+            </div>
+            <div class="info-card">
+                <h3>☕ Organic Coffee Hub</h3>
+                <p>Famous as the true pioneer birthplace of organic coffee production across Nepal, cultivating premium specialty beans within ideal high altitudes.</p>
+            </div>
+            <div class="info-card">
+                <h3>✈️ Resunga Access</h3>
+                <p>The operational Resunga Airport provides rapid aerial link connections to Kathmandu, bypassing challenging highway routes.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 2: Historical Timeline Records -->
+    <section id="history" style="background-color: #08090c;">
+        <h2 class="section-header">Sacred History & Heritage</h2>
+        <div class="history-box">
+            <div class="history-event">
+                <div class="event-time">Ancient Era - Resunga Hill</div>
+                <p style="color: #cbd5e1; font-weight: 600;">The Seat of Yaduka Ashram</p>
+                <p style="color: #94a3b8; margin-top: 5px;">Historically revered as an elite spiritual meditation location for powerful sages. Renowned yogi Shringi Rishi spent significant eras here. The high peak boasts ancient sacred water ponds located at over 2,300 meters high.</p>
+            </div>
+            <div class="history-event">
+                <div class="event-time">Medieval Era - Ruru Kshetra</div>
+                <p style="color: #cbd5e1; font-weight: 600;">The Holy Confluence at Ridi</p>
+                <p style="color: #94a3b8; margin-top: 5px;">Established as one of the four main sacred religious crossroads in Nepal. The legendary historic Rishikesh Temple, constructed by King Mukunda Sen of Palpa, remains an architecturally rich monument along the Kaligandaki River banks.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 3: June 2026 Live Dynamic Bulletins -->
+    <section id="news" style="background-color: #0b0c10;">
+        <h2 class="section-header">Latest News Updates</h2>
+        <div class="news-container">
+            <div class="news-strip">
+                <div class="news-meta">🚨 June 5, 2026 • Traffic Update</div>
+                <h4>RSP Lawmakers Safe Following Minor Vehicle Incident</h4>
+                <p>An electric vehicle carrying House of Representatives lawmakers, including Sagar Dhakal (elected from Gulmi-1), experienced a temporary loss of control at Raidi along the Tamghas-Burtibang road axis. Local police verified the vehicle safely came to rest securely along the protective embankment. No casualties or injuries occurred.</p>
+            </div>
+            <div class="news-strip">
+                <div class="news-meta">🌦️ May 27, 2026 • Climate Alert</div>
+                <h4>Severe Windstorms Cause Structure Damages in Malika Region</h4>
+                <p>Heavy storm systems passing through Gulmi resulted in structural damage to 82 buildings and properties, particularly within the Malika and Madane local jurisdictions. The District Police Office under SP Bhim Kiran Bogati confirmed emergency recovery teams immediately deployed to repair compromised tin roofing across regional schools.</p>
+            </div>
+            <div class="news-strip">
+                <div class="news-meta">🎓 June 2, 2026 • Local Incentives</div>
+                <h4>PABSON Gulmi Announces Cash Rewards for Outstanding 4.0 GPA Achievements</h4>
+                <p>To incentivize academic excellence following recent secondary test disclosures, PABSON Gulmi officially authorized individual 50,000 NPR cash grants directly supporting local public and private institutional scholars who unlocked rare perfect scores.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        &copy; 2026 District Information Interface • Programmed completely on Android via Pydroid 3 app.
+    </footer>
+
+    <!-- Three.js Interactive Script Engine Logic -->
+    <script>
+        const container = document.getElementById('canvas3d-container');
+        const scene = new THREE.Scene();
+        
+        // Setup standard 3D Camera fields
+        const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 15, 25);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // Build simulated 3D topographic relief terrain using a parametric wireframe mesh plane
+        const width = 24, height = 24;
+        const widthSegments = 35, heightSegments = 35;
+        const geometry = new THREE.PlaneGeometry(width, height, widthSegments, heightSegments);
+
+        // Manipulate vertex indices heights to generate mountain ridges representing Gulmi hills
+        const pos = geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const y = pos.getY(i);
+            // Multi-frequency noise algorithms to map out realistic terrain
+            const zHeight = Math.sin(x * 0.3) * Math.cos(y * 0.3) * 2.5 
+                          + Math.sin(x * 0.8) * 0.6 
+                          + Math.cos(y * 1.2) * 0.3;
+            pos.setZ(i, zHeight);
+        }
+        geometry.computeVertexNormals();
+
+        // Material construction mapping out neon futuristic grid topography lines
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xff4500,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.18
+        });
+        
+        const terrainMesh = new THREE.Mesh(geometry, material);
+        // Tilt plane horizontally to render depth map perspective accurately
+        terrainMesh.rotation.x = -Math.PI / 2.2;
+        scene.add(terrainMesh);
+
+        // Add secondary subtle landscape base highlighting glowing nodes
+        const pointsMaterial = new THREE.PointsMaterial({
+            color: 0xffd700,
+            size: 0.08
+        });
+        const terrainPoints = new THREE.Points(geometry, pointsMaterial);
+        terrainPoints.rotation.x = -Math.PI / 2.2;
+        scene.add(terrainPoints);
+
+        // Implement touch/drag monitoring parameters for Android inputs
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        window.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.touches[0].clientX - previousMousePosition.x;
+            // Map lateral slide velocity onto core 3D mesh rotation vectors
+            terrainMesh.rotation.z += deltaX * 0.005;
+            terrainPoints.rotation.z += deltaX * 0.005;
+            previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        });
+
+        window.addEventListener('touchend', () => { isDragging = false; });
+
+        // Continuous animation loop pipeline
+        function animate() {
+            requestAnimationFrame(animate);
+            // Default ambient slow spin when touch behavior is idle
+            if (!isDragging) {
+                terrainMesh.rotation.z += 0.0015;
+                terrainPoints.rotation.z += 0.0015;
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Responsive re-scaling trigger when switching screen orientations
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+</html>
+"""
+
+class CustomHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(bytes(HTML_CONTENT, "utf-8"))
+
+def launch_browser():
+    time.sleep(1.5)
+    print("\n🌐 Opening your custom 3D Gulmi Platform...")
+    webbrowser.open(f"http://localhost:{PORT}")
+
+if __name__ == "__main__":
+    threading.Thread(target=launch_browser, daemon=True).start()
+    with socketserver.TCPServer(("", PORT), CustomHandler) as httpd:
+        print(f"🚀 3D Web Engine successfully running on port {PORT}!")
+        print("💡 Use your finger to drag the rotating 3D terrain grid once it opens.")
+        print("🛑 Hit 'Stop' in Pydroid to close the host.")
+        httpd.serve_forever()
